@@ -69,8 +69,8 @@ async function schedule() {
 }
 
 chrome.runtime.onInstalled.addListener(schedule);
-chrome.runtime.onStartup.addListener(schedule);
-chrome.alarms.onAlarm.addListener((a) => a.name === 'refresh' && refreshAll(false));
+chrome.runtime.onStartup.addListener(() => { schedule(); updateBadge(); });
+chrome.alarms.onAlarm.addListener((a) => a.name === 'refresh' && refreshAll(false).catch(console.error));
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.settings) { schedule(); updateBadge(); }
 });

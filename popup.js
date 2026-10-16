@@ -77,6 +77,7 @@ async function refresh(service, force = true) {
   targets.forEach((k) => busy.add(k));
   render();
   try { await chrome.runtime.sendMessage({ cmd: 'refresh', service, force }); }
+  catch (e) { console.error(e); }
   finally { targets.forEach((k) => busy.delete(k)); render(); }
 }
 
