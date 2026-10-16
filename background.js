@@ -11,7 +11,9 @@ const inflight = {};
 //                                "backoff:<svc>" { n, until }
 //          chrome.storage.session "raw:<svc>"    sanitized raw JSON for the Debug view (cleared on browser exit)
 function refresh(service, force) {
-  return (inflight[service] ??= run(service, force).finally(() => delete inflight[service]));
+  return (inflight[service] ??= (async () => {
+    try { return await run(service, force); } finally { delete inflight[service]; }
+  })());
 }
 
 async function run(service, force) {
@@ -75,6 +77,13 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.cmd !== 'refresh') return;
-  (msg.service ? refresh(msg.service, !!msg.force) : refreshAll(!!msg.force)).then(() => sendResponse(true), () => sendResponse(false));
+  (async () => {
+    try {
+      await (msg.service ? refresh(msg.service, !!msg.force) : refreshAll(!!msg.force));
+      sendResponse(true);
+    } catch {
+      sendResponse(false);
+    }
+  })();
   return true; // async response
 });
