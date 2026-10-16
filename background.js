@@ -1,8 +1,9 @@
 import * as claude from './adapters/claude.js';
 import * as chatgpt from './adapters/chatgpt.js';
+import * as gemini from './adapters/gemini.js';
 import { getSettings, level, COLORS, MIN_INTERVAL } from './shared.js';
 
-const ADAPTERS = { claude, chatgpt };
+const ADAPTERS = { claude, chatgpt, gemini };
 const FRESH_MS = 60 * 1000; // popup reopened within a minute reuses the cache
 const inflight = {};
 

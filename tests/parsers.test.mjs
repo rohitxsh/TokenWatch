@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseUsage as parseClaude, pickOrg } from '../adapters/claude.js';
 import { parseUsage as parseChatgpt } from '../adapters/chatgpt.js';
+import { parseUsage as parseGemini, unwrapRpc } from '../adapters/gemini.js';
 import { toRes } from '../adapters/common.js';
 
 test('claude: limits[] array', () => {
@@ -50,8 +51,24 @@ test('chatgpt: wham usage (Plan limits page)', () => {
   assert.deepEqual(parseChatgpt({ rate_limit: null }), []);
 });
 
+test('gemini: batchexecute jSf9Qc', () => {
+  const body = ")]}'\n\n202\n" + JSON.stringify([
+    ['wrb.fr', 'jSf9Qc', '[2,[[41465,0.14299671,2,[[1792696109,536930000]]],[2213,0.08,1,[[1792188509,536830000]]]],false]', null, null, null, 'generic'],
+    ['di', 136], ['af.httprm', 135, '0', 11],
+  ]) + '\n25\n[["e",4,null,null,143]]\n';
+  const limits = parseGemini(unwrapRpc(body));
+  assert.deepEqual(limits.map((l) => [l.id, l.label, l.percentUsed]), [
+    ['kind_1', 'Current limit', 8],
+    ['kind_2', 'Weekly limit', 14.3],
+  ]);
+  assert.equal(limits[0].resetsAt, new Date(1792188509000).toISOString());
+  assert.equal(unwrapRpc(")]}'\n\n25\n[[\"e\",4,null,null,143]]\n"), undefined);
+  assert.deepEqual(parseGemini(undefined), []);
+});
+
 test('common: toRes detects JSON and Cloudflare', () => {
   assert.equal(toRes(200, 'application/json', '{"a":1}').ok, true);
   assert.equal(toRes(403, 'text/html', '<title>Just a moment...</title>').cloudflare, true);
   assert.equal(toRes(200, 'text/html', '<html>').ok, false);
+  assert.equal(toRes(200, 'text/html', '<x>"SNlM0e":"tok"</x>', (t) => t.match(/"SNlM0e":"([^"]+)"/)?.[1] ?? null).json, 'tok');
 });

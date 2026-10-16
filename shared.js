@@ -2,10 +2,11 @@
 export const SERVICES = {
   claude: { name: 'Claude', host: 'claude.ai', url: 'https://claude.ai/settings/usage' },
   chatgpt: { name: 'ChatGPT', host: 'chatgpt.com', url: 'https://chatgpt.com/settings/usage?tab=overview' },
+  gemini: { name: 'Gemini', host: 'gemini.google.com', url: 'https://gemini.google.com/usage' },
 };
 
 export const MIN_INTERVAL = 5;
-const DEFAULTS = { intervalMin: 15, background: true, badge: true, services: { claude: true, chatgpt: true } };
+const DEFAULTS = { intervalMin: 15, background: true, badge: true, services: Object.fromEntries(Object.keys(SERVICES).map((k) => [k, true])) };
 
 export async function getSettings() {
   const { settings: s = {} } = await chrome.storage.local.get('settings');

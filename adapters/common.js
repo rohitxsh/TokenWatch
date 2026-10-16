@@ -4,11 +4,12 @@
 // reason (SameSite cookies, Cloudflare, missing page headers), re-runs the same
 // fetch inside an already-open tab of that site (MAIN world). Never opens tabs.
 // `valid(json)` lets a caller treat a 200 as a failure (e.g. a session response without a token).
-export async function getJson(origin, path, init = {}, valid = () => true) {
+// `parse(text, contentType)` turns the body into `json` (undefined = unparseable); defaults to JSON.
+export async function getJson(origin, path, init = {}, valid = () => true, parse = parseJson) {
   let res;
   try {
     const r = await fetch(origin + path, { ...init, credentials: 'include' });
-    res = check(toRes(r.status, r.headers.get('content-type'), await r.text()), valid);
+    res = check(toRes(r.status, r.headers.get('content-type'), await r.text(), parse), valid);
   } catch (e) {
     res = { status: 0, ok: false, error: String(e?.message || e) };
   }
@@ -31,7 +32,7 @@ export async function getJson(origin, path, init = {}, valid = () => true) {
           }
         },
       });
-      if (result.status) return { ...check(toRes(result.status, result.type, result.text), valid), viaTab: true };
+      if (result.status) return { ...check(toRes(result.status, result.type, result.text, parse), valid), viaTab: true };
     } catch {} // tab still loading, crashed, or on an error page: try the next one
   }
   return { ...res, noTab: !tabs.length };
@@ -39,9 +40,11 @@ export async function getJson(origin, path, init = {}, valid = () => true) {
 
 const check = (res, valid) => ({ ...res, ok: res.ok && !!valid(res.json) });
 
-export function toRes(status, type, text) {
+const parseJson = (text, type) => (/json/i.test(type || '') ? JSON.parse(text) : undefined);
+
+export function toRes(status, type, text, parse = parseJson) {
   let json;
-  if (/json/i.test(type || '')) try { json = JSON.parse(text); } catch {}
+  try { json = parse(text || '', type || ''); } catch {}
   return {
     status,
     json,
@@ -62,7 +65,7 @@ export function failed(service, host, r, raw) {
   if (r.status === 401 || r.status === 403) return out('logged_out', `HTTP ${r.status} from ${host}.${hint}`);
   if (r.status === 429) return out('unavailable', `Rate limited by ${host} (HTTP 429). Backing off.`);
   if (r.status === 0) return out('unavailable', `Network error: ${r.error}.${hint}`);
-  if (r.status >= 200 && r.status < 300) return out('parse_error', `${host} returned a non-JSON response.`);
+  if (r.status >= 200 && r.status < 300) return out('parse_error', `${host} returned a response that couldn't be parsed.`);
   return out('unavailable', `HTTP ${r.status} from ${host}.${hint}`);
 }
 
